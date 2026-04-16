@@ -53,13 +53,15 @@ export const ComboboxSearch = factory<ComboboxSearchFactory>((_props) => {
     autoComplete: 'off',
   });
 
+  const { ref: targetRef, ...restTargetProps } = targetProps;
+
   return (
     <Input
-      ref={useMergedRef(ref, ctx.store.searchRef)}
+      ref={useMergedRef(ref, ctx.store.searchRef, targetRef)}
       classNames={[{ input: _styles.className }, classNames] as any}
       styles={[{ input: _styles.style }, styles] as any}
       size={size || ctx.size}
-      {...targetProps}
+      {...restTargetProps}
       {...others}
       __staticSelector="Combobox"
     />

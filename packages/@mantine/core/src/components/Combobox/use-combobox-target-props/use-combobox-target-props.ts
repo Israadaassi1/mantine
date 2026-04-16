@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useComboboxContext } from '../Combobox.context';
 
 interface UseComboboxTargetPropsInput {
@@ -6,7 +6,7 @@ interface UseComboboxTargetPropsInput {
   withAriaAttributes: boolean | undefined;
   withKeyboardNavigation: boolean | undefined;
   withExpandedAttribute: boolean | undefined;
-  onKeyDown: React.KeyboardEventHandler<HTMLInputElement> | undefined;
+  onKeyDown: React.KeyboardEventHandler<HTMLElement> | undefined;
   autoComplete: string | undefined;
 }
 
@@ -20,21 +20,23 @@ export function useComboboxTargetProps({
 }: UseComboboxTargetPropsInput) {
   const ctx = useComboboxContext();
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const ref = useRef<HTMLElement>(null);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    onKeyDown?.(event);
-
+  const handleKeyDownEvent = (event: Pick<
+    KeyboardEvent,
+    'key' | 'code' | 'keyCode' | 'isComposing' | 'preventDefault'
+  >) => {
     if (ctx.readOnly) {
       return;
     }
 
     if (withKeyboardNavigation) {
       // Ignore during composition in IME
-      if (event.nativeEvent.isComposing) {
+      if (event.isComposing) {
         return;
       }
 
-      if (event.nativeEvent.code === 'ArrowDown') {
+      if (event.code === 'ArrowDown') {
         event.preventDefault();
 
         if (!ctx.store.dropdownOpened) {
@@ -46,7 +48,7 @@ export function useComboboxTargetProps({
         }
       }
 
-      if (event.nativeEvent.code === 'ArrowUp') {
+      if (event.code === 'ArrowUp') {
         event.preventDefault();
 
         if (!ctx.store.dropdownOpened) {
@@ -58,11 +60,11 @@ export function useComboboxTargetProps({
         }
       }
 
-      if (event.nativeEvent.code === 'Enter' || event.nativeEvent.code === 'NumpadEnter') {
+      if (event.code === 'Enter' || event.code === 'NumpadEnter') {
         // This is a workaround for handling differences in behavior of isComposing property in Safari
         // See: https://dninomiya.github.io/form-guide/stop-enter-submit
         // eslint-disable-next-line @typescript-eslint/no-deprecated
-        if (event.nativeEvent.keyCode === 229) {
+        if (event.keyCode === 229) {
           return;
         }
 
@@ -81,7 +83,7 @@ export function useComboboxTargetProps({
         ctx.store.closeDropdown('keyboard');
       }
 
-      if (event.nativeEvent.code === 'Space') {
+      if (event.code === 'Space') {
         if (targetType === 'button') {
           event.preventDefault();
           ctx.store.toggleDropdown('keyboard');
@@ -89,6 +91,34 @@ export function useComboboxTargetProps({
       }
     }
   };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    onKeyDown?.(event);
+    handleKeyDownEvent(event.nativeEvent);
+  };
+
+  useEffect(() => {
+    const isSafari =
+      typeof navigator !== 'undefined' &&
+      /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    if (!isSafari || targetType !== 'button') {
+      return;
+    }
+
+    const targetNode = ref.current;
+    if (!targetNode) {
+      return;
+    }
+
+    const listener = (event: KeyboardEvent) => {
+      onKeyDown?.(event as any);
+      handleKeyDownEvent(event);
+    };
+
+    targetNode.addEventListener('keydown', listener, true);
+    return () => targetNode.removeEventListener('keydown', listener, true);
+  }, [onKeyDown, targetType]);
 
   const ariaAttributes = withAriaAttributes
     ? {
@@ -111,5 +141,6 @@ export function useComboboxTargetProps({
   return {
     ...ariaAttributes,
     onKeyDown: handleKeyDown,
+    ref,
   };
 }

@@ -1,6 +1,6 @@
 import { cloneElement } from 'react';
 import { useMergedRef } from '@mantine/hooks';
-import { factory, Factory, getSingleElementChild, useProps } from '../../../core';
+import { factory, Factory, getRefProp, getSingleElementChild, useProps } from '../../../core';
 import { Popover } from '../../Popover';
 import { useComboboxContext } from '../Combobox.context';
 import { useComboboxTargetProps } from '../use-combobox-target-props/use-combobox-target-props';
@@ -77,13 +77,17 @@ export const ComboboxTarget = factory<ComboboxTargetFactory>((props) => {
     autoComplete,
   });
 
+  const { ref: targetRef, ...restTargetProps } = targetProps;
+
   const clonedElement = cloneElement(child, {
-    ...targetProps,
+    ...restTargetProps,
     ...others,
   });
 
   return (
-    <Popover.Target ref={useMergedRef(ref, ctx.store.targetRef)}>{clonedElement}</Popover.Target>
+    <Popover.Target ref={useMergedRef(ref, ctx.store.targetRef, targetRef, getRefProp(child))}>
+      {clonedElement}
+    </Popover.Target>
   );
 });
 
